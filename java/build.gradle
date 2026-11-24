@@ -1,23 +1,33 @@
 buildscript {
     repositories {
-        google()
         mavenCentral()
     }
 
     dependencies {
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.10'
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.10.1'
     }
 }
 
-apply plugin: 'java'
+apply plugin: 'java-library'
 apply plugin: 'com.google.protobuf'
-apply plugin: 'maven'
+apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-sourceCompatibility = 1.7
-archivesBaseName = "signal-protocol-java"
-version          = version_number
-group            = group_info
+version = version_number
+group   = group_info
+
+base {
+    archivesName = "signal-protocol-java"
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+}
 
 repositories {
     mavenCentral()
@@ -33,10 +43,10 @@ sourceSets {
 }
 
 dependencies {
-    compile "org.whispersystems:curve25519-java:${curve25519_version}"
-    compile 'com.google.protobuf:protobuf-javalite:3.21.4'
+    api "org.whispersystems:curve25519-java:${curve25519_version}"
+    api 'com.google.protobuf:protobuf-javalite:3.21.4'
 
-    testCompile ('junit:junit:3.8.2')
+    testImplementation 'junit:junit:3.8.2'
 }
 
 protobuf {
@@ -44,7 +54,7 @@ protobuf {
         artifact = 'com.google.protobuf:protoc:3.21.4'
     }
     generateProtoTasks {
-        all().each { task ->
+        all().configureEach { task ->
             task.builtins {
                 java {
                     option "lite"
@@ -85,74 +95,54 @@ def getRepositoryPassword() {
     return hasProperty('whisperSonatypePassword') ? whisperSonatypePassword : ""
 }
 
-signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask("uploadArchives") }
-    sign configurations.archives
-}
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = 'signal-protocol-java'
 
-uploadArchives {
-    configuration = configurations.archives
-    repositories.mavenDeployer {
-        beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+            pom {
+                name = 'signal-protocol-java'
+                packaging = 'jar'
+                description = 'Signal Protocol cryptography library for Java'
+                url = 'https://github.com/WhisperSystems/libsignal-android'
 
-        repository(url: getReleaseRepositoryUrl()) {
-            authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
-        }
-
-        pom.project {
-            name 'signal-protocol-java'
-            packaging 'jar'
-            description 'Signal Protocol cryptography library for Java'
-            url 'https://github.com/WhisperSystems/libsignal-android'
-
-            scm {
-                url 'scm:git@github.com:WhisperSystems/libsignal-android.git'
-                connection 'scm:git@github.com:WhisperSystems/libsignal-android.git'
-                developerConnection 'scm:git@github.com:WhisperSystems/libsignal-android.git'
-            }
-
-            licenses {
-                license {
-                    name 'GPLv3'
-                    url 'https://www.gnu.org/licenses/gpl-3.0.txt'
-                    distribution 'repo'
+                scm {
+                    url = 'scm:git@github.com:WhisperSystems/libsignal-android.git'
+                    connection = 'scm:git@github.com:WhisperSystems/libsignal-android.git'
+                    developerConnection = 'scm:git@github.com:WhisperSystems/libsignal-android.git'
                 }
-            }
 
-            developers {
-                developer {
-                    name 'Moxie Marlinspike'
+                licenses {
+                    license {
+                        name = 'GPLv3'
+                        url = 'https://www.gnu.org/licenses/gpl-3.0.txt'
+                        distribution = 'repo'
+                    }
+                }
+
+                developers {
+                    developer {
+                        name = 'Moxie Marlinspike'
+                    }
                 }
             }
         }
     }
-}
 
-task installArchives(type: Upload) {
-    description "Installs the artifacts to the local Maven repository."
-    configuration = configurations['archives']
     repositories {
-        mavenDeployer {
-            repository url: "file://${System.properties['user.home']}/.m2/repository"
+        maven {
+            name = 'sonatype'
+            url = getReleaseRepositoryUrl()
+            credentials {
+                username = getRepositoryUsername()
+                password = getRepositoryPassword()
+            }
         }
     }
 }
 
-task packageJavadoc(type: Jar, dependsOn: 'javadoc') {
-    from javadoc.destinationDir
-    classifier = 'javadoc'
+signing {
+    required { isReleaseBuild() && gradle.taskGraph.hasTask("${project.path}:publish") }
+    sign publishing.publications.mavenJava
 }
-
-task packageSources(type: Jar) {
-    from sourceSets.main.allSource
-    classifier = 'sources'
-}
-
-artifacts {
-    archives(packageJavadoc) {
-        type = 'javadoc'
-    }
-
-    archives packageSources
-}
-
