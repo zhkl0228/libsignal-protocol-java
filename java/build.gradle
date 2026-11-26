@@ -44,14 +44,14 @@ sourceSets {
 
 dependencies {
     api "org.whispersystems:curve25519-java:${curve25519_version}"
-    api 'com.google.protobuf:protobuf-javalite:3.21.4'
+    api 'com.google.protobuf:protobuf-javalite:4.36.2'
 
     testImplementation 'junit:junit:4.13.2'
 }
 
 protobuf {
     protoc {
-        artifact = 'com.google.protobuf:protoc:3.21.4'
+        artifact = 'com.google.protobuf:protoc:4.36.2'
     }
     generateProtoTasks {
         all().configureEach { task ->
