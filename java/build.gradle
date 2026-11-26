@@ -46,7 +46,7 @@ dependencies {
     api "org.whispersystems:curve25519-java:${curve25519_version}"
     api 'com.google.protobuf:protobuf-javalite:3.21.4'
 
-    testImplementation 'junit:junit:3.8.2'
+    testImplementation 'junit:junit:4.13.2'
 }
 
 protobuf {
@@ -143,6 +143,6 @@ publishing {
 }
 
 signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask("${project.path}:publish") }
+    required = { isReleaseBuild() && gradle.taskGraph.hasTask("${project.path}:publish") }
     sign publishing.publications.mavenJava
 }
